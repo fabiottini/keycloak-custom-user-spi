@@ -4,6 +4,223 @@
 >
 > This is an experimental proof-of-concept developed to investigate the feasibility of integrating legacy user databases with Keycloak SSO using a custom User Storage Provider. This project is not production-ready and serves as a technical exploration of authentication federation patterns.
 
+## Table of Contents
+
+- [Quick Start Guide](#quick-start-guide)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Technical Requirements](#technical-requirements)
+- [Detailed Setup](#detailed-setup)
+- [Configuration Management](#configuration-management)
+- [Development Workflow](#development-workflow)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Security Considerations](#security-considerations)
+
+## Quick Start Guide
+
+This section provides a step-by-step guide to get the system up and running from scratch.
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Terminal/Command line access
+- 8080, 8082, 8083, 8084, 5433 ports available
+
+### Step 1: Clone and Configure
+
+```bash
+# Navigate to the project directory
+cd keycloak-custom-user-spi
+
+# Verify the .env file exists (it should be in the repository)
+ls -la .env
+```
+
+### Step 2: Start All Services
+
+```bash
+# Start all Docker containers (Keycloak, PostgreSQL, Apache test apps)
+make up
+
+# This will start:
+# - Keycloak (port 8080)
+# - Custom User Database (port 5433)
+# - Keycloak Database (internal)
+# - Apache Test App 1 (port 8083)
+# - Apache Test App 2 (port 8082)
+# - Adminer DB Manager (port 8084)
+```
+
+**Wait approximately 30-60 seconds** for Keycloak to fully start.
+
+### Step 3: Build and Deploy Custom SPI
+
+```bash
+# Build the custom User Storage Provider JAR
+make build-spi
+
+# This command:
+# 1. Compiles the Java SPI using Maven in Docker
+# 2. Copies the JAR to Keycloak's providers directory
+# 3. Restarts Keycloak to load the provider
+```
+
+**Wait approximately 30 seconds** for Keycloak to restart.
+
+### Step 4: Configure Keycloak
+
+```bash
+# Run the setup script to configure Keycloak
+make setup-spi
+
+# This will prompt you through:
+# 1. Deploying the SPI JAR (confirm with Y)
+# 2. Waiting for Keycloak to be ready
+# 3. Creating the realm and OAuth clients
+# 4. Configuring User Federation with custom database
+
+# Answer 'Y' to all prompts
+```
+
+### Step 5: Synchronize OAuth Client Secrets
+
+```bash
+# Fetch client secrets from Keycloak and update Apache containers
+make update-client-secrets
+
+# This command:
+# 1. Retrieves OAuth client secrets from Keycloak
+# 2. Updates the .env file with current secrets
+# 3. Restarts Apache containers with new configuration
+```
+
+### Step 6: Test Authentication
+
+Open your browser and navigate to:
+
+```
+http://localhost:8082
+```
+
+**Test Credentials:**
+- Username: `mrossi`
+- Password: `mrossi`
+
+Click **"Login with Keycloak"** and authenticate with the credentials above.
+
+### Step 7: Verify Success
+
+After successful authentication, you should see:
+- User information (name, email, username)
+- JWT token details
+- Welcome message
+
+### Alternative: One-Command Setup
+
+For a completely automated setup from scratch:
+
+```bash
+make setup-from-scratch
+```
+
+This executes all steps automatically, but requires manual confirmation for the setup-spi step.
+
+### Quick Reference: Service URLs
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Apache Test App 1 | http://localhost:8083 | OAuth login |
+| Apache Test App 2 | http://localhost:8082 | OAuth login |
+| Keycloak Admin | http://localhost:8080/admin | admin / admin |
+| Adminer (DB Tool) | http://localhost:8084 | See below |
+| User Database | localhost:5433 | user / user_password / user |
+
+**Adminer Connection Details:**
+- **System**: PostgreSQL
+- **Server**: user-db
+- **Username**: user
+- **Password**: user_password
+- **Database**: user
+
+### Available Test Users
+
+The custom database includes these pre-configured users:
+
+| Username | Password | Email |
+|----------|----------|-------|
+| mrossi | mrossi | mario.rossi@email.com |
+| lverdi | lverdi | luigi.verdi@email.com |
+| abianchi | abianchi | anna.bianchi@email.com |
+| testuser | testuser1! | test@example.com |
+
+### Common Commands
+
+```bash
+# View all available commands
+make help
+
+# View service logs
+make logs              # All services
+make logs-keycloak     # Keycloak only
+make logs-user-db      # Database only
+
+# Service management
+make restart           # Restart all services
+make down              # Stop all services
+make clean             # Stop and remove all containers
+
+# Database operations
+make db-show-users     # View all users in database
+make db-shell          # Open PostgreSQL shell
+
+# SPI development
+make build-spi         # Rebuild and redeploy SPI
+make test-spi          # Test SPI integration
+
+# Check system status
+make status            # Show all running containers
+make show-urls         # Display all service URLs
+```
+
+### Troubleshooting Quick Start
+
+**Keycloak not responding:**
+```bash
+# Check if Keycloak is running
+docker ps | grep keycloak
+
+# View Keycloak logs
+make logs-keycloak
+```
+
+**Authentication fails with "Invalid credentials":**
+```bash
+# Verify user exists in database
+make db-show-users
+
+# Check if User Federation is configured
+# Navigate to: http://localhost:8080/admin
+# Go to: test_env realm > User Federation
+# Verify "custom-user-storage" component exists and is enabled
+```
+
+**OAuth error "Invalid client credentials":**
+```bash
+# Resynchronize client secrets
+make update-client-secrets
+```
+
+**Port already in use:**
+```bash
+# Check what's using the ports
+lsof -i :8080
+lsof -i :8082
+lsof -i :8083
+
+# Stop other services or modify ports in .env file
+```
+
 ## Overview
 
 This project demonstrates the implementation of a custom User Storage Provider (SPI) for Keycloak, enabling authentication against a legacy PostgreSQL database with MD5-hashed passwords. The architecture showcases how enterprise identity management systems can be extended to accommodate existing user repositories without requiring data migration or password re-hashing.
