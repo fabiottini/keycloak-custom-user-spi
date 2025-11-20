@@ -1,0 +1,129 @@
+services:
+
+  user-db:
+    image: ${DB_IMAGE:-postgres:15}
+    container_name: ${DB_CONTAINER_NAME:-user-postgres}
+    environment:
+      POSTGRES_DB: ${DB_NAME:-user}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-user_password}
+    ports:
+      - "${DB_EXTERNAL_PORT:-5433}:5432"
+    volumes:
+      - ${POSTGRES_USER_DATA_VOLUME:-postgres_user_data}:/var/lib/postgresql/data
+      # - ./${DB_SCHEMA_FILE:-user_db_schema_data.sql}:/docker-entrypoint-initdb.d/01-init.sql
+    restart: unless-stopped
+    networks:
+      - ${NETWORK_NAME:-keycloak-network}
+      - default
+
+  # Database per Keycloak
+  keycloak-db:
+    image: ${KEYCLOAK_DB_IMAGE:-postgres:15}
+    container_name: ${KEYCLOAK_DB_CONTAINER_NAME:-keycloak-postgres}
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_password}
+    volumes:
+      - ${POSTGRES_KEYCLOAK_DATA_VOLUME:-postgres_data}:/var/lib/postgresql/data
+    networks:
+      - ${NETWORK_NAME:-keycloak-network}
+    restart: unless-stopped
+
+  # Keycloak con SPI personalizzato
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.3.1}
+    container_name: ${KEYCLOAK_CONTAINER_NAME:-keycloak}
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${KEYCLOAK_DB_HOST:-keycloak-db}:${KEYCLOAK_DB_PORT:-5432}/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_password}
+      KC_HOSTNAME: ${KEYCLOAK_HOST:-localhost}
+      KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-8080}
+      KC_HOSTNAME_STRICT: ${KEYCLOAK_HOSTNAME_STRICT:-false}
+      KC_HOSTNAME_STRICT_HTTPS: ${KEYCLOAK_HOSTNAME_STRICT_HTTPS:-false}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-debug}
+      KC_LOG_CONSOLE_OUTPUT: json
+      KC_LOG_CONSOLE_FORMAT: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n"
+      QUARKUS_LOG_LEVEL: ${QUARKUS_LOG_LEVEL:-DEBUG}
+      QUARKUS_LOG_CATEGORY_ORG_KEYCLOAK_LEVEL: ${QUARKUS_LOG_CATEGORY_ORG_KEYCLOAK_LEVEL:-DEBUG}
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_password}
+    command: start-dev
+    depends_on:
+      - keycloak-db
+      - user-db
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ${KEYCLOAK_DATA_VOLUME:-keycloak_data}:/opt/keycloak/data
+    networks:
+      - ${NETWORK_NAME:-keycloak-network}
+    restart: unless-stopped
+
+  # Primo container Apache con PHP
+  apache-php-1:
+    build:
+      context: ${BUILD_CONTEXT:-.}
+      dockerfile: ${DOCKERFILE_APACHE:-Dockerfile.apache-php}
+    container_name: ${APACHE1_CONTAINER_NAME:-apache-php-1}
+    ports:
+      - "${APACHE1_PORT:-8083}:80"
+    volumes:
+      - ${APACHE1_HTML_DIR:-./volumes/apache1_html}:/var/www/html
+      - ${APACHE1_LOGS_DIR:-./volumes/apache1_logs}:/var/log/apache2
+    environment:
+      - APACHE_DOCUMENT_ROOT=${APACHE_DOCUMENT_ROOT:-/var/www/html}
+      - KEYCLOAK_HOST=${KEYCLOAK_HOST:-localhost}
+      - KEYCLOAK_PORT=${KEYCLOAK_PORT:-8080}
+      - REALM_NAME=${REALM_NAME:-test_env}
+      - CLIENT_ID1=${CLIENT_ID1:-test_client}
+      - CLIENT_ID2=${CLIENT_ID2:-test_client2}
+      - CLIENT_SECRET1=${CLIENT_SECRET1:-}
+      - CLIENT_SECRET2=${CLIENT_SECRET2:-}
+      - REDIRECT_PORT=${APACHE1_PORT:-8083}
+    networks:
+      - ${NETWORK_NAME:-keycloak-network}
+    restart: unless-stopped
+
+  # Secondo container Apache con PHP
+  apache-php-2:
+    build:
+      context: ${BUILD_CONTEXT:-.}
+      dockerfile: ${DOCKERFILE_APACHE:-Dockerfile.apache-php}
+    container_name: ${APACHE2_CONTAINER_NAME:-apache-php-2}
+    ports:
+      - "${APACHE2_PORT:-8082}:80"
+    volumes:
+      - ${APACHE2_HTML_DIR:-./volumes/apache2_html}:/var/www/html
+      - ${APACHE2_LOGS_DIR:-./volumes/apache2_logs}:/var/log/apache2
+    environment:
+      - APACHE_DOCUMENT_ROOT=${APACHE_DOCUMENT_ROOT:-/var/www/html}
+      - KEYCLOAK_HOST=${KEYCLOAK_HOST:-localhost}
+      - KEYCLOAK_PORT=${KEYCLOAK_PORT:-8080}
+      - REALM_NAME=${REALM_NAME:-test_env}
+      - CLIENT_ID1=${CLIENT_ID1:-test_client}
+      - CLIENT_ID2=${CLIENT_ID2:-test_client2}
+      - CLIENT_SECRET1=${CLIENT_SECRET1:-}
+      - CLIENT_SECRET2=${CLIENT_SECRET2:-}
+      - REDIRECT_PORT=${APACHE2_PORT:-8082}
+    networks:
+      - ${NETWORK_NAME:-keycloak-network}
+    restart: unless-stopped
+
+networks:
+  keycloak-network:
+    driver: ${NETWORK_DRIVER:-bridge}
+
+volumes:
+  postgres_user_data:
+  postgres_data:
+  keycloak_data:
+  apache1_html:
+  apache1_logs:
+  apache2_html:
+  apache2_logs:

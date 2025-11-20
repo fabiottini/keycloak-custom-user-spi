@@ -1,0 +1,65 @@
+# Environment configuration
+.env
+.env.local
+.env.*.local
+config.*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Maven
+custom-user-spi/target/
+custom-user-spi/.mvn/
+custom-user-spi/mvnw
+custom-user-spi/mvnw.cmd
+
+# Docker volumes and data
+docker/volumes/
+
+# Logs
+*.log
+logs/
+*.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.jar
+*.war
+*.ear
+*.class
+
+# Keycloak data
+keycloak_data/
+
+# Database data
+postgres_data/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS specific
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Security - never commit sensitive files
+credentials.json
+secrets.yaml
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+keystore.*
+truststore.*
