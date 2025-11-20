@@ -168,6 +168,13 @@ All system parameters are centralized in the `.env` file, enabling environment-s
 - `SPI_JAR_NAME`: Artifact name
 - `SPI_SOURCE_DIR`, `SPI_TARGET_DIR`: Build paths
 
+**Adminer (Database Management)**:
+- `ADMINER_PORT`: Web interface port (default: 8084)
+- `ADMINER_CONTAINER_NAME`: Container name (default: adminer)
+- `ADMINER_IMAGE`: Docker image (default: adminer:latest)
+- `ADMINER_DEFAULT_SERVER`: Default database server (default: user-db)
+- `ADMINER_DESIGN`: UI theme (default: nette)
+
 ### Configuration Validation
 
 ```bash
@@ -226,6 +233,7 @@ Output artifact: `custom-user-spi/target/custom-user-spi-1.0.0.jar`
 | Keycloak Admin | http://localhost:8080/admin | Administration console |
 | Apache App 1 | http://localhost:8083 | Test application (client 1) |
 | Apache App 2 | http://localhost:8082 | Test application (client 2) |
+| Adminer | http://localhost:8084 | Database management interface |
 | User Database | localhost:5433 | PostgreSQL (internal access) |
 
 ### Test Users
@@ -282,6 +290,31 @@ CREATE TABLE utenti (
 ```
 
 ### Database Management
+
+**Web-based Management (Adminer)**:
+
+Adminer provides a user-friendly web interface to inspect and manage both databases:
+
+```bash
+# Access Adminer at http://localhost:8084
+
+# Login credentials:
+# For Custom User Database:
+#   System: PostgreSQL
+#   Server: user-db
+#   Username: user
+#   Password: user_password
+#   Database: user
+
+# For Keycloak Database:
+#   System: PostgreSQL
+#   Server: keycloak-db
+#   Username: keycloak
+#   Password: keycloak_password
+#   Database: keycloak
+```
+
+**Command Line Access**:
 
 ```bash
 # View all users

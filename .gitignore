@@ -63,3 +63,4 @@ secrets.yaml
 *.jks
 keystore.*
 truststore.*
+CLAUDE.md

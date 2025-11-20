@@ -20,9 +20,11 @@ DB_SCHEMA_FILE ?= user_db_schema_data.sql
 KEYCLOAK_CONTAINER_NAME ?= keycloak
 APACHE1_CONTAINER_NAME ?= apache-php-1
 APACHE2_CONTAINER_NAME ?= apache-php-2
+ADMINER_CONTAINER_NAME ?= adminer
 KEYCLOAK_HOST ?= localhost
 KEYCLOAK_PORT ?= 8080
 APACHE1_PORT ?= 8083
+ADMINER_PORT ?= 8084
 MAX_WAIT_ATTEMPTS ?= 120
 WAIT_INTERVAL ?= 5
 
@@ -33,7 +35,7 @@ RED=\033[0;31m
 BLUE=\033[0;34m
 NC=\033[0m # No Color
 
-.PHONY: help config check-config build up down logs clean setup-spi test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 update-client-secrets
+.PHONY: help config check-config build up down logs clean setup-spi test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 logs-adminer update-client-secrets
 
 help: ## Show this help message
 	@echo "$(BLUE)=====================================================$(NC)"
@@ -183,6 +185,10 @@ logs-apache2: ## Second Apache logs
 	@echo "$(YELLOW)📋 Second Apache logs...$(NC)"
 	docker-compose logs -f $(APACHE2_CONTAINER_NAME)
 
+logs-adminer: ## Adminer database tool logs
+	@echo "$(YELLOW)📋 Adminer logs...$(NC)"
+	docker-compose logs -f $(ADMINER_CONTAINER_NAME)
+
 # User database management commands
 db-setup: check-config ## Create database and apply schema
 	@echo "$(YELLOW)🗄️  Setting up user database...$(NC)"
@@ -229,6 +235,11 @@ show-urls: check-config ## Show all available URLs
 	@echo "$(GREEN)🌐 Test Applications:$(NC)"
 	@echo "   Apache 1: http://$(KEYCLOAK_HOST):$(APACHE1_PORT)"
 	@echo "   Apache 2: http://$(KEYCLOAK_HOST):$(APACHE2_PORT)"
+	@echo ""
+	@echo "$(GREEN)🗄️ Database Management (Adminer):$(NC)"
+	@echo "   URL: http://$(KEYCLOAK_HOST):$(ADMINER_PORT)"
+	@echo "   Keycloak DB: keycloak-db (user: keycloak, db: keycloak)"
+	@echo "   Custom User DB: user-db (user: user, db: user)"
 	@echo ""
 	@echo "$(GREEN)🔍 Health Check:$(NC)"
 	@echo "   Keycloak: http://$(KEYCLOAK_HOST):$(KEYCLOAK_PORT)/health"
