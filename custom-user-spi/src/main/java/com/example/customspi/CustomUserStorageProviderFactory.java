@@ -43,7 +43,7 @@ public class CustomUserStorageProviderFactory implements UserStorageProviderFact
      * This ID is used by Keycloak to register and reference the provider.
      * It must match the configuration in the Admin Console.
      */
-    public static final String PROVIDER_ID = "custom_user_storage";
+    public static final String PROVIDER_ID = "fabiottini-custom-user-storage";
 
     /**
      * Creates a new instance of the CustomUserStorageProvider.

@@ -35,7 +35,7 @@ RED=\033[0;31m
 BLUE=\033[0;34m
 NC=\033[0m # No Color
 
-.PHONY: help config check-config build up down logs clean setup-spi test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 logs-adminer update-client-secrets
+.PHONY: help config check-config build up down logs clean setup-spi remove-spi test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 logs-adminer update-client-secrets
 
 help: ## Show this help message
 	@echo "$(BLUE)=====================================================$(NC)"
@@ -53,7 +53,7 @@ help: ## Show this help message
 
 config: ## Show complete loaded configuration
 	@echo "$(BLUE)🔧 Testing and displaying configuration...$(NC)"
-	@./config-loader.sh
+	@./scripts/config-loader.sh
 
 check-config: ## Verify that configuration file is valid
 	@echo "$(YELLOW)🔍 Checking configuration...$(NC)"
@@ -63,7 +63,7 @@ check-config: ## Verify that configuration file is valid
 		exit 1; \
 	fi
 	@echo "$(GREEN)✅ Configuration file $(CONFIG_FILE) found$(NC)"
-	@./config-loader.sh > /dev/null && echo "$(GREEN)✅ Configuration is valid$(NC)" || echo "$(RED)❌ Configuration is not valid$(NC)"
+	@./scripts/config-loader.sh > /dev/null && echo "$(GREEN)✅ Configuration is valid$(NC)" || echo "$(RED)❌ Configuration is not valid$(NC)"
 
 build: check-config ## Build Docker containers
 	@echo "$(YELLOW)🏗️  Building Docker containers...$(NC)"
@@ -100,9 +100,14 @@ clean: ## Clean everything (containers, volumes, images)
 # docker system prune -f
 	@echo "$(GREEN)✅ Cleanup completed!$(NC)"
 
-setup-spi: check-config ## Configure custom SPI in Keycloak
+setup-spi: check-config ## Configure custom SPI in Keycloak (removes old one if exists)
 	@echo "$(YELLOW)🚀 Configuring custom SPI...$(NC)"
-	@./setup-spi.sh
+	@./scripts/setup-spi.sh
+
+remove-spi: check-config ## Remove User Federation component from Keycloak
+	@echo "$(YELLOW)🗑️  Removing User Federation component...$(NC)"
+	@./scripts/remove_component.sh
+	@echo "$(GREEN)✅ User Federation component removed!$(NC)"
 
 test-spi: check-config ## Test SPI integration
 	@echo "$(YELLOW)🧪 Testing SPI integration...$(NC)"
@@ -129,7 +134,7 @@ status: ## Show services status
 # Development-specific commands
 build-spi: check-config ## Build only the custom SPI
 	@echo "$(YELLOW)🔨 Building custom SPI...$(NC)"
-	@./build-spi.sh
+	@./scripts/build-spi.sh
 
 update-jar: check-config ## Update JAR in running Keycloak without rebuilding
 	@echo "$(YELLOW)🔄 Updating JAR in Keycloak...$(NC)"
@@ -164,7 +169,7 @@ restart-keycloak: check-config ## Restart only Keycloak container
 
 update-client-secrets: check-config ## Download client secrets from Keycloak and update .env file, then restart Apache containers
 	@echo "$(YELLOW)🔑 Updating client secrets from Keycloak...$(NC)"
-	@./update-client-secrets.sh
+	@./scripts/update-client-secrets.sh
 	@echo "$(YELLOW)🔄 Restarting Apache containers with new client secrets...$(NC)"
 	docker-compose down $(APACHE1_CONTAINER_NAME) $(APACHE2_CONTAINER_NAME) && docker-compose up -d $(APACHE1_CONTAINER_NAME) $(APACHE2_CONTAINER_NAME)
 	@echo "$(GREEN)✅ Client secrets updated and Apache containers restarted!$(NC)"
@@ -262,7 +267,7 @@ wait_keycloak_step:
 
 create-component: check-config ## Create component in Keycloak
 	@echo "$(YELLOW)🔧 Creating component in Keycloak...$(NC)"
-	@./create_component.sh
+	@./scripts/create_component.sh
 
 
 setup-from-scratch: ## Setup from scratch all services 
@@ -275,6 +280,4 @@ setup-from-scratch: ## Setup from scratch all services
 	make setup-spi
 	make db-setup
 	make db-show-users
-	make wait_keycloak_step
-	make update-client-secrets
 	make show-urls

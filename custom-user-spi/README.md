@@ -1,17 +1,17 @@
-# Custom User Storage SPI per Keycloak
+# Custom User Storage SPI for Keycloak
 
-Questo SPI (Service Provider Interface) permette a Keycloak di leggere gli utenti da un database PostgreSQL custom e autenticarli usando password MD5.
+This SPI (Service Provider Interface) allows Keycloak to read users from a custom PostgreSQL database and authenticate them using MD5 passwords.
 
-## Caratteristiche
+## Features
 
-- **Lettura utenti**: Legge gli utenti dalla tabella `utenti` del database custom
-- **Autenticazione MD5**: Verifica le password usando hash MD5
-- **Ricerca utenti**: Supporta ricerca per username, email, nome e cognome
-- **Solo lettura**: Non permette modifiche agli utenti (solo lettura)
+- **User Reading**: Reads users from the `utenti` table in the custom database
+- **MD5 Authentication**: Verifies passwords using MD5 hashes
+- **User Search**: Supports searching by username, email, first name, and last name
+- **Read-Only**: Does not allow user modifications (read-only operations)
 
-## Struttura Database
+## Database Structure
 
-Il database deve avere una tabella `utenti` con la seguente struttura:
+The database must have a `utenti` table with the following structure:
 
 ```sql
 CREATE TABLE utenti (
@@ -20,42 +20,42 @@ CREATE TABLE utenti (
     cognome VARCHAR(50) NOT NULL,
     mail VARCHAR(100) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(32) NOT NULL -- MD5 hash (32 caratteri)
+    password VARCHAR(32) NOT NULL -- MD5 hash (32 characters)
 );
 ```
 
-## Configurazione
+## Configuration
 
-### 1. Build del JAR
+### 1. Build the JAR
 
 ```bash
 cd custom-user-spi
 mvn clean package
 ```
 
-### 2. Deploy in Keycloak
+### 2. Deploy to Keycloak
 
-Copia il JAR generato in `/opt/keycloak/providers/` del container Keycloak.
+Copy the generated JAR to `/opt/keycloak/providers/` in the Keycloak container.
 
-### 3. Configurazione in Keycloak Admin Console
+### 3. Configure in Keycloak Admin Console
 
-1. Vai su **User Federation** nel realm
-2. Clicca **Add provider** → **custom-user-storage**
-3. Configura i parametri:
+1. Go to **User Federation** in the realm
+2. Click **Add provider** → **fabiottini-custom-user-storage**
+3. Configure the parameters:
    - **Database URL**: `jdbc:postgresql://user-db:5432/user`
    - **Database User**: `user`
    - **Database Password**: `user_password`
    - **Table Name**: `utenti`
 
-### 4. Configurazione Authentication Flow
+### 4. Configure Authentication Flow
 
-1. Vai su **Authentication** nel realm
-2. Crea un nuovo flow o modifica quello esistente
-3. Aggiungi il **Custom Credential Validator** per l'autenticazione MD5
+1. Go to **Authentication** in the realm
+2. Create a new flow or modify the existing one
+3. Add the **Custom Credential Validator** for MD5 authentication
 
-## Test
+## Test Users
 
-Gli utenti di test nel database sono:
+The test users in the database are:
 
 | Username | Password | Email |
 |----------|----------|-------|
@@ -72,19 +72,19 @@ Gli utenti di test nel database sono:
 
 ## Troubleshooting
 
-### Log Keycloak
-Controlla i log di Keycloak per errori di connessione:
+### Keycloak Logs
+Check Keycloak logs for connection errors:
 ```bash
 docker logs keycloak
 ```
 
-### Test Connessione Database
+### Test Database Connection
 ```bash
 docker exec -it user-postgres psql -U user -d user -c "SELECT * FROM utenti;"
 ```
 
-### Verifica MD5
-Per testare l'hash MD5 di una password:
+### Verify MD5
+To test the MD5 hash of a password:
 ```bash
-echo -n "username1!" | md5sum
+echo -n "password" | md5sum
 ``` 
