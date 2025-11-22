@@ -445,6 +445,41 @@ restart_keycloak_step() {
     echo "Keycloak restarted"
 }
 
+# -----------------------------------------------------
+# FUNCTION: sync_client_secrets_step
+# -----------------------------------------------------
+# Synchronizes OAuth client secrets from Keycloak to
+# the .env file and restarts Apache containers.
+#
+# This is necessary because when OAuth clients are created,
+# Keycloak generates new secrets that must be propagated
+# to the Apache containers for SSO to work properly.
+# -----------------------------------------------------
+sync_client_secrets_step() {
+    echo "Synchronizing OAuth client secrets..."
+    echo ""
+    echo "⚠️  This will update client secrets in .env and restart Apache containers"
+    
+    if ask_confirmation "Proceed with client secret synchronization?" "y"; then
+        bash "$SCRIPT_DIR/update-client-secrets.sh"
+        
+        if [ $? -eq 0 ]; then
+            echo ""
+            echo "✅ Client secrets synchronized successfully"
+            echo "🔄 Restarting Apache containers..."
+            docker-compose restart "$APACHE1_CONTAINER_NAME" "$APACHE2_CONTAINER_NAME"
+            echo "✅ Apache containers restarted with new secrets"
+        else
+            echo ""
+            echo "⚠️  Failed to synchronize client secrets"
+            echo "💡 You can run it manually later with: make update-client-secrets"
+        fi
+    else
+        echo "⏭️  Skipped client secret synchronization"
+        echo "💡 Run it manually later with: make update-client-secrets"
+    fi
+}
+
 # =====================================================
 # MAIN EXECUTION
 # =====================================================
@@ -470,11 +505,15 @@ if ask_confirmation "Proceed with Keycloak configuration?"; then
     configure_user_federation_step
     show_summary_step
     restart_keycloak_step
+    sync_client_secrets_step
 
     echo ""
     echo "========================================"
     echo "Setup Complete"
     echo "========================================"
+    echo ""
+    echo "🎉 All configuration steps completed successfully!"
+    echo "📝 Test Applications are now ready with synchronized credentials"
 else
     echo "Configuration cancelled by user"
     exit 0

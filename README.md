@@ -124,21 +124,25 @@ make setup-spi
 # 3. Creating the realm and OAuth clients
 # 4. Removing any existing User Federation components (automatic)
 # 5. Configuring User Federation with custom database
+# 6. Synchronizing OAuth client secrets automatically
 
 # Answer 'Y' to all prompts
-# Note: If a User Federation component already exists, it will be automatically removed
+# Note: Client secrets are automatically synchronized at the end
 ```
 
-### Step 5: Synchronize OAuth Client Secrets
+### Step 5: Verify Installation
 
 ```bash
-# Fetch client secrets from Keycloak and update Apache containers
-make update-client-secrets
+# Check all service URLs and credentials
+make show-urls
 
-# This command:
-# 1. Retrieves OAuth client secrets from Keycloak
-# 2. Updates the .env file with current secrets
-# 3. Restarts Apache containers with new configuration
+# Test the SPI integration
+make test-spi
+```
+
+**Note**: OAuth client secrets are now synchronized automatically during `make setup-spi`. If you need to manually resync them later, use:
+```bash
+make update-client-secrets
 ```
 
 ### Step 6: Test Authentication
@@ -259,8 +263,11 @@ make db-show-users
 
 **OAuth error "Invalid client credentials":**
 ```bash
-# Resynchronize client secrets
+# Resynchronize client secrets (normally done automatically by setup-spi)
 make update-client-secrets
+
+# Or run the complete setup again
+make setup-spi
 ```
 
 **Port already in use:**

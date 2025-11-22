@@ -280,6 +280,4 @@ setup-from-scratch: ## Setup from scratch all services
 	make setup-spi
 	make db-setup
 	make db-show-users
-	make wait_keycloak_step
-	make update-client-secrets
 	make show-urls
