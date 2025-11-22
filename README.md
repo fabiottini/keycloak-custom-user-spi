@@ -4,8 +4,52 @@
 >
 > This is an experimental proof-of-concept developed to investigate the feasibility of integrating legacy user databases with Keycloak SSO using a custom User Storage Provider. This project is not production-ready and serves as a technical exploration of authentication federation patterns.
 
+## Visual Overview
+
+This section provides visual examples of the application in action and the dynamic SPI configuration in Keycloak.
+
+### Application Flow
+
+The system provides two test Apache/PHP applications that demonstrate SSO authentication via Keycloak with the custom User Storage Provider.
+
+**Application 1 - Login Flow:**
+
+![App 1 Start Page](docs/screenshot/app1_start_login_page.png)
+*Test Application 1 initial page with "Login with Keycloak" button*
+
+![Keycloak SSO Login](docs/screenshot/kc_test_env_sso_login_page.png)
+*Keycloak authentication page - users authenticate with credentials from the custom database*
+
+![App 1 Logged In](docs/screenshot/app1_mrossi_sso_jwt_logged_in.png)
+*Application 1 after successful authentication showing user details and JWT token information*
+
+**Application 2 - SSO Experience:**
+
+![App 2 Start Page](docs/screenshot/app2_start_login_page.png)
+*Test Application 2 initial page*
+
+![App 2 Logged In](docs/screenshot/app2_mrossi_logged_in.png)
+*Application 2 demonstrating Single Sign-On - automatic authentication without re-entering credentials*
+
+### Dynamic SPI Configuration
+
+The custom User Storage Provider is dynamically configured in Keycloak's Admin Console without requiring code changes or redeployment.
+
+**User Federation Configuration:**
+
+![User Federation Setup](docs/screenshot/kc_user_federation_custom_user_storage.png)
+*Keycloak User Federation page showing the custom-user-storage provider configuration*
+
+**Dynamic Database Connection Parameters:**
+
+![SPI Parameters](docs/screenshot/kc_user_federation_custom_parameter.png)
+*Dynamic configuration of database connection parameters (URL, credentials, table name) directly in Keycloak UI*
+
+These parameters allow the SPI to connect to any PostgreSQL database without code modifications, making it flexible and reusable across different environments.
+
 ## Table of Contents
 
+- [Visual Overview](#visual-overview)
 - [Quick Start Guide](#quick-start-guide)
 - [Overview](#overview)
 - [Architecture](#architecture)
@@ -78,9 +122,11 @@ make setup-spi
 # 1. Deploying the SPI JAR (confirm with Y)
 # 2. Waiting for Keycloak to be ready
 # 3. Creating the realm and OAuth clients
-# 4. Configuring User Federation with custom database
+# 4. Removing any existing User Federation components (automatic)
+# 5. Configuring User Federation with custom database
 
 # Answer 'Y' to all prompts
+# Note: If a User Federation component already exists, it will be automatically removed
 ```
 
 ### Step 5: Synchronize OAuth Client Secrets
@@ -152,7 +198,13 @@ The custom database includes these pre-configured users:
 | mrossi | mrossi | mario.rossi@email.com |
 | lverdi | lverdi | luigi.verdi@email.com |
 | abianchi | abianchi | anna.bianchi@email.com |
-| testuser | testuser1! | test@example.com |
+| gneri | gneri | giulia.neri@email.com |
+| mferrari | mferrari | marco.ferrari@email.com |
+| sromano | sromano | sara.romano@email.com |
+| aricci | aricci | andrea.ricci@email.com |
+| emarino | emarino | elena.marino@email.com |
+| dgreco | dgreco | davide.greco@email.com |
+| fbruno | fbruno | francesca.bruno@email.com |
 
 ### Common Commands
 
@@ -202,7 +254,7 @@ make db-show-users
 # Check if User Federation is configured
 # Navigate to: http://localhost:8080/admin
 # Go to: test_env realm > User Federation
-# Verify "custom-user-storage" component exists and is enabled
+# Verify "fabiottini-custom-user-storage" component exists and is enabled
 ```
 
 **OAuth error "Invalid client credentials":**
@@ -285,7 +337,7 @@ The Custom User Storage Provider implements Keycloak's `UserStorageProvider` int
 - **Read-Only Operations**: Focused on authentication without modifying the legacy database
 
 **Key Implementation Files**:
-- `CustomUserStorageProviderFactory`: Factory class for SPI registration (Provider ID: `custom_user_storage`)
+- `CustomUserStorageProviderFactory`: Factory class for SPI registration (Provider ID: `fabiottini-custom-user-storage`)
 - `CustomUserStorageProvider`: Core provider implementing authentication logic
 - `CustomUserModel`: Adapter translating database records to Keycloak's UserModel interface
 
@@ -459,10 +511,16 @@ The system includes pre-configured test users in the custom database:
 
 | Username | Password | Email |
 |----------|----------|-------|
-| mrossi | mrossi1! | mario.rossi@email.com |
-| lverdi | lverdi1! | luigi.verdi@email.com |
-| abianchi | abianchi1! | anna.bianchi@email.com |
-| testuser | testuser1! | test@example.com |
+| mrossi | mrossi | mario.rossi@email.com |
+| lverdi | lverdi | luigi.verdi@email.com |
+| abianchi | abianchi | anna.bianchi@email.com |
+| gneri | gneri | giulia.neri@email.com |
+| mferrari | mferrari | marco.ferrari@email.com |
+| sromano | sromano | sara.romano@email.com |
+| aricci | aricci | andrea.ricci@email.com |
+| emarino | emarino | elena.marino@email.com |
+| dgreco | dgreco | davide.greco@email.com |
+| fbruno | fbruno | francesca.bruno@email.com |
 
 Passwords are stored as MD5 hashes in the database.
 
@@ -474,7 +532,7 @@ Passwords are stored as MD5 hashes in the database.
 open http://localhost:8083
 
 # 2. Click "Login con Keycloak"
-# 3. Enter credentials: mrossi / mrossi1!
+# 3. Enter credentials: mrossi / mrossi
 # 4. Verify successful authentication and user data display
 ```
 
@@ -485,7 +543,7 @@ curl -X POST http://localhost:8080/realms/test_env/protocol/openid-connect/token
   -d "grant_type=password" \
   -d "client_id=test_client2" \
   -d "username=mrossi" \
-  -d "password=mrossi1!"
+  -d "password=mrossi"
 ```
 
 **Automated Integration Test**:
@@ -558,7 +616,8 @@ make clean           # Remove containers and volumes
 ### SPI Operations
 ```bash
 make build-spi       # Build and deploy SPI
-make setup-spi       # Configure SPI in Keycloak
+make setup-spi       # Configure SPI in Keycloak (auto-removes old component)
+make remove-spi      # Remove User Federation component from Keycloak
 make test-spi        # Run integration tests
 ```
 
@@ -594,7 +653,7 @@ make check-config    # Validate configuration file
 docker exec keycloak ls -la /opt/keycloak/providers/
 
 # Review Keycloak startup logs
-docker logs keycloak | grep -i "custom_user_storage\|UserStorageProvider"
+docker logs keycloak | grep -i "fabiottini-custom-user-storage\|UserStorageProvider"
 
 # Verify service registration file
 cat custom-user-spi/src/main/resources/META-INF/services/org.keycloak.storage.UserStorageProviderFactory
@@ -623,7 +682,7 @@ docker exec user-postgres psql -U user -d user -c "SELECT * FROM utenti;"
 **Diagnosis**:
 ```bash
 # Validate password hash
-echo -n "mrossi1!" | md5sum
+echo -n "mrossi" | md5sum
 
 # Check user exists in database
 docker exec user-postgres psql -U user -d user -c "SELECT username, mail FROM utenti WHERE username='mrossi';"
