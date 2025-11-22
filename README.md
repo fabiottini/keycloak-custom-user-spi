@@ -145,6 +145,142 @@ make test-spi
 make update-client-secrets
 ```
 
+### Testing
+
+Run the complete integration test suite to verify all components:
+
+```bash
+make test
+```
+
+This will test:
+- System health (Keycloak, SPI, Apache applications, databases)
+- User database connectivity and data
+- OAuth2 authentication flow with Apache Application 1
+- Single Sign-On (SSO) between applications
+- JWT token validation
+- Failed authentication scenarios
+
+#### Expected Test Output
+
+When all tests pass, you should see output similar to:
+
+```
+==================================================
+KEYCLOAK SSO INTEGRATION TEST SUITE
+==================================================
+
+Testing environment:
+  Keycloak: http://localhost:8080
+  Apache 1: http://localhost:8083
+  Apache 2: http://localhost:8082
+  User DB:  user-db:5432/user
+  Realm:    test_env
+
+==================================================
+1. SYSTEM HEALTH CHECKS
+==================================================
+
+TEST: Keycloak service is reachable
+✓ PASS: Keycloak is running (health endpoint not available)
+
+TEST: Keycloak realm 'test_env' exists
+✓ PASS: Realm 'test_env' exists
+
+TEST: Custom SPI is loaded in Keycloak
+✓ PASS: Custom SPI 'fabiottini-custom-user-storage' is loaded and configured
+
+TEST: Apache Application 1 is reachable
+✓ PASS: Apache Application 1 is running
+
+TEST: Apache Application 2 is reachable
+✓ PASS: Apache Application 2 is running
+
+==================================================
+2. USER DATABASE VALIDATION
+==================================================
+
+TEST: User database connection
+✓ PASS: User database is accessible
+
+TEST: User table contains test data
+✓ PASS: User table has 11 users
+
+TEST: Test user 'mrossi' exists in database
+✓ PASS: Test user 'mrossi' exists
+
+==================================================
+3. OAUTH2 AUTHENTICATION FLOW (Application 1)
+==================================================
+
+TEST: OAuth2 authorization flow
+  Obtaining access token via password grant...
+✓ PASS: Successfully obtained access token
+  Token type: Bearer
+  Expires in: 300 seconds
+
+TEST: JWT token validation
+✓ PASS: JWT contains correct username: mrossi
+  Email: mario.rossi@email.com
+  Subject: f:7dc34484-dbbc-4ca9-a8f3-af7f1364af5d:1
+
+TEST: Access protected resource with token
+  HTTP Status: 403
+⚠ SKIP: Userinfo endpoint not accessible (HTTP 403)
+  Note: This is non-critical - JWT token contains user info
+  Tip: Add 'openid profile email' scopes if userinfo access is needed
+
+==================================================
+4. SINGLE SIGN-ON (Application 2)
+==================================================
+
+TEST: SSO with Application 2 using same token
+✓ PASS: SSO successful - same JWT token works across applications
+  Token contains user: mrossi
+  Note: Real apps decode JWT directly, not via userinfo endpoint
+
+TEST: Token refresh capability
+✓ PASS: Successfully refreshed access token
+
+==================================================
+5. FAILED AUTHENTICATION TEST
+==================================================
+
+TEST: Authentication with wrong password
+✓ PASS: Authentication correctly rejected with wrong password
+  Error: Invalid user credentials
+
+TEST: Authentication with non-existent user
+✓ PASS: Authentication correctly rejected for non-existent user
+  Error: Invalid user credentials
+
+==================================================
+TEST SUMMARY
+==================================================
+
+Total tests: 15
+Passed: 14
+Failed: 0
+
+==================================================
+ALL TESTS PASSED!
+==================================================
+```
+
+**Test Breakdown**:
+1. **Section 1 (5 tests)**: Verifies all services are running and accessible
+2. **Section 2 (3 tests)**: Validates user database has correct schema and test data
+3. **Section 3 (3 tests)**: Tests complete OAuth2 authentication flow with JWT validation
+4. **Section 4 (2 tests)**: Verifies Single Sign-On works across applications
+5. **Section 5 (2 tests)**: Ensures invalid credentials are properly rejected
+
+**Note**: The userinfo endpoint test may be skipped (HTTP 403) - this is expected and non-critical as applications read user data directly from the JWT token.
+
+For a quick health check:
+```bash
+make test-spi
+```
+
 ### Step 6: Test Authentication
 
 Open your browser and navigate to:
@@ -667,7 +803,8 @@ make clean           # Remove containers and volumes
 make build-spi       # Build and deploy SPI
 make setup-spi       # Configure SPI in Keycloak (auto-removes old component)
 make remove-spi      # Remove User Federation component from Keycloak
-make test-spi        # Run integration tests
+make test            # Run complete integration test suite
+make test-spi        # Quick SPI integration check
 ```
 
 ### Development Tools
