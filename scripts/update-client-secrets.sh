@@ -43,7 +43,9 @@ echo ""
 # Initialize and validate configuration
 init_config
 
-ENV_FILE="$SCRIPT_DIR/.env"
+# Project root is the parent directory of scripts/
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+ENV_FILE="$PROJECT_ROOT/.env"
 
 # =====================================================
 # PRE-FLIGHT CHECKS

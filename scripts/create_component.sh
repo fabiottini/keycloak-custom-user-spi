@@ -19,7 +19,7 @@
 #   5. Verifies component creation
 #
 # Component Configuration:
-#   - Provider ID: custom_user_storage (matches SPI factory)
+#   - Provider ID: fabiottini-custom-user-storage (matches SPI factory)
 #   - Provider Type: org.keycloak.storage.UserStorageProvider
 #   - Database connection parameters from .env
 #   - Enabled by default with DEFAULT cache policy
@@ -104,7 +104,7 @@ echo "Creating User Federation component..."
 echo ""
 echo "Component Configuration:"
 echo "  Name: $SPI_NAME"
-echo "  Provider ID: $SPI_COMPONENT_PROVIDER_ID"
+echo "  Provider ID: $SPI_PROVIDER_ID"
 echo "  Database URL: $DB_URL"
 echo "  Database User: $DB_USER"
 echo "  Table Name: $DB_TABLE_NAME"
@@ -117,7 +117,7 @@ COMPONENT_RESPONSE=$(curl -s -w "%{http_code}" -X POST "http://$KEYCLOAK_HOST:$K
     -H "Content-Type: application/json" \
     -d "{
         \"name\": \"$SPI_NAME\",
-        \"providerId\": \"$SPI_COMPONENT_PROVIDER_ID\",
+        \"providerId\": \"$SPI_PROVIDER_ID\",
         \"providerType\": \"org.keycloak.storage.UserStorageProvider\",
         \"config\": {
             \"dbUrl\": [\"$DB_URL\"],

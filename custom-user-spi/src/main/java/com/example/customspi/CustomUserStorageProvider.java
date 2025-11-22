@@ -18,8 +18,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.security.MessageDigest;
@@ -46,13 +44,18 @@ public class CustomUserStorageProvider implements
         String dbUser = model.getConfig().getFirst("dbUser");
         String dbPassword = model.getConfig().getFirst("dbPassword");
         
-        if (dbUrl == null) {
-            dbUrl = "jdbc:postgresql://user-db:5432/user";
-            dbUser = "user";
-            dbPassword = "user_password";
+        if (dbUrl == null || dbUser == null || dbPassword == null) {
+            throw new SQLException("Database connection parameters not configured. " +
+                "Please configure dbUrl, dbUser, and dbPassword in Keycloak Admin Console > User Federation.");
         }
         
         return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+    }
+    
+    // Helper to get the configured table name
+    private String getTableName() {
+        String tableName = model.getConfig().getFirst("tableName");
+        return (tableName != null && !tableName.trim().isEmpty()) ? tableName : "utenti";
     }
     
     @Override
@@ -62,7 +65,8 @@ public class CustomUserStorageProvider implements
         String externalId = storageId.getExternalId();
         
         try (Connection connection = getConnection()) {
-            String sql = "SELECT id, nome, cognome, mail, username, password FROM utenti WHERE id = ?";
+            //TODO: generalize
+            String sql = "SELECT id, nome, cognome, mail, username, password FROM " + getTableName() + " WHERE id = ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, Integer.parseInt(externalId));
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -87,7 +91,8 @@ public class CustomUserStorageProvider implements
         logger.infof("=== LOOKUP USER BY USERNAME: %s ===", username);
         
         try (Connection connection = getConnection()) {
-            String sql = "SELECT id, nome, cognome, mail, username, password FROM utenti WHERE username = ?";
+            //TODO: generalize
+            String sql = "SELECT id, nome, cognome, mail, username, password FROM " + getTableName() + " WHERE username = ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, username);
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -112,7 +117,8 @@ public class CustomUserStorageProvider implements
         logger.infof("Getting user by email: %s", email);
         
         try (Connection connection = getConnection()) {
-            String sql = "SELECT id, nome, cognome, mail, username, password FROM utenti WHERE mail = ?";
+            //TODO: generalize
+            String sql = "SELECT id, nome, cognome, mail, username, password FROM " + getTableName() + " WHERE mail = ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, email);
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -131,7 +137,7 @@ public class CustomUserStorageProvider implements
     @Override
     public int getUsersCount(RealmModel realm) {
         try (Connection connection = getConnection()) {
-            String sql = "SELECT COUNT(*) FROM utenti";
+            String sql = "SELECT COUNT(*) FROM " + getTableName();
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
@@ -147,7 +153,8 @@ public class CustomUserStorageProvider implements
     
     public Stream<UserModel> getUsersStream(RealmModel realm, Integer firstResult, Integer maxResults) {
         try (Connection connection = getConnection()) {
-            String sql = "SELECT id, nome, cognome, mail, username, password FROM utenti LIMIT ? OFFSET ?";
+            //TODO: generalize
+            String sql = "SELECT id, nome, cognome, mail, username, password FROM " + getTableName() + " LIMIT ? OFFSET ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, maxResults);
                 statement.setInt(2, firstResult);
@@ -186,7 +193,8 @@ public class CustomUserStorageProvider implements
         String searchPattern = "%" + search.toLowerCase() + "%";
         
         try (Connection connection = getConnection()) {
-            String sql = "SELECT id, nome, cognome, mail, username, password FROM utenti " +
+            //TODO: generalize
+            String sql = "SELECT id, nome, cognome, mail, username, password FROM " + getTableName() + " " +
                         "WHERE LOWER(username) LIKE ? OR LOWER(nome) LIKE ? OR LOWER(cognome) LIKE ? OR LOWER(mail) LIKE ? " +
                         "LIMIT ? OFFSET ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -286,6 +294,7 @@ public class CustomUserStorageProvider implements
             return false;
         }
         
+        //TODO: generalize, support multiple hash types
         // Validate MD5 hash
         boolean isValid = validateMD5Password(inputPassword, storedPassword);
         logger.infof("Validation result: %s", isValid);
@@ -295,7 +304,7 @@ public class CustomUserStorageProvider implements
     
     private String getPasswordFromDatabase(String username) {
         try (Connection connection = getConnection()) {
-            String sql = "SELECT password FROM utenti WHERE username = ?";
+            String sql = "SELECT password FROM " + getTableName() + " WHERE username = ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, username);
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -331,6 +340,7 @@ public class CustomUserStorageProvider implements
     }
     
     private UserModel mapUser(ResultSet resultSet, RealmModel realm) throws SQLException {
+        //TODO: generalize, support multiple columns
         String id = resultSet.getString("id");
         String username = resultSet.getString("username");
         String email = resultSet.getString("mail");

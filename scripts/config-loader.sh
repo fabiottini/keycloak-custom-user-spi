@@ -34,12 +34,13 @@ load_config() {
     # Determine the directory where this script is located
     # This ensures we can find .env regardless of where the script is called from
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local config_file="$script_dir/.env"
+    local project_root="$(dirname "$script_dir")"
+    local config_file="$project_root/.env"
 
     # Verify .env file exists
     if [ ! -f "$config_file" ]; then
         echo "ERROR: Configuration file not found: $config_file"
-        echo "HINT: Create a .env file based on .env.example"
+        echo "HINT: Create a .env file in the project root directory"
         exit 1
     fi
 

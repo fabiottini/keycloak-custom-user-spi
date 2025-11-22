@@ -346,12 +346,18 @@ create_oauth_client_step() {
 # Configures the User Federation component to use the
 # custom user storage provider.
 #
-# This delegates to create_component.sh which handles
-# the detailed component configuration via Keycloak's
-# Admin API.
+# This first removes any existing User Federation components
+# (to allow clean reinstallation), then creates a new one
+# via create_component.sh which handles the detailed
+# component configuration via Keycloak's Admin API.
 # -----------------------------------------------------
 configure_user_federation_step() {
     echo "Configuring User Federation with custom SPI..."
+    echo ""
+    echo "Step 1: Removing existing User Federation components (if any)..."
+    bash "$SCRIPT_DIR/remove_component.sh"
+    echo ""
+    echo "Step 2: Creating new User Federation component..."
     bash "$SCRIPT_DIR/create_component.sh"
 }
 

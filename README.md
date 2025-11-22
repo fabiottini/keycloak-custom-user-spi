@@ -38,7 +38,7 @@ The custom User Storage Provider is dynamically configured in Keycloak's Admin C
 **User Federation Configuration:**
 
 ![User Federation Setup](docs/screenshot/kc_user_federation_custom_user_storage.png)
-*Keycloak User Federation page showing the custom-user-storage provider configuration*
+*Keycloak User Federation page showing the fabiottini-custom-user-storage provider configuration*
 
 **Dynamic Database Connection Parameters:**
 
@@ -359,16 +359,19 @@ keycloak-custom-user-spi/
 │   ├── pom.xml                         # Maven configuration
 │   └── target/                         # Build artifacts
 ├── docker/                             # Docker configurations
+├── scripts/                            # Automation scripts
+│   ├── config-loader.sh                # Centralized configuration management
+│   ├── build-spi.sh                    # SPI compilation script
+│   ├── setup-spi.sh                    # SPI deployment and configuration
+│   ├── create_component.sh             # User Federation component creation
+│   ├── remove_component.sh             # User Federation component removal
+│   └── update-client-secrets.sh        # OAuth client synchronization
 ├── volumes/                            # Persistent data (excluded from git)
 │   ├── apache1_html/                   # Test application 1
 │   ├── apache2_html/                   # Test application 2
 │   └── postgres_data/                  # Database persistence
 ├── docker-compose.yml                  # Service orchestration
 ├── Makefile                            # Build and deployment automation
-├── config-loader.sh                    # Centralized configuration management
-├── build-spi.sh                        # SPI compilation script
-├── setup-spi.sh                        # SPI deployment and configuration
-├── update-client-secrets.sh            # OAuth client synchronization
 └── user_db_schema_data.sql             # Database schema and test data
 ```
 
