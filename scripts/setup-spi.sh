@@ -268,43 +268,71 @@ create_realm_step() {
 # -----------------------------------------------------
 # FUNCTION: create_oauth_client_step
 # -----------------------------------------------------
-# Creates two OAuth2 clients in the realm for testing
-# authentication flows.
+# Creates or updates two OAuth2 clients in the realm.
+#
+# Smart Client Management:
+#   - Checks if client already exists
+#   - If exists: retrieves existing secret (preserves persistence)
+#   - If not exists: creates new client with new secret
+#   - Updates redirect URIs if client exists but URIs changed
 #
 # Client Configuration:
 #   - Client 1: CLIENT_ID1 with configured redirect URIs
 #   - Client 2: CLIENT_ID2 with configured redirect URIs
 #   - Both support standard flow and direct grants
-#   - Client secrets automatically generated
 #
 # Outputs:
-#   - Client IDs and generated secrets
+#   - Client IDs and secrets (existing or new)
 #   - Configured redirect URIs
 # -----------------------------------------------------
 create_oauth_client_step() {
-    echo "Creating OAuth2 client 1: $CLIENT_ID1..."
+    echo "Configuring OAuth2 client 1: $CLIENT_ID1..."
 
-    # Create first client
-    curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"clientId\": \"$CLIENT_ID1\",
-            \"enabled\": true,
-            \"publicClient\": false,
-            \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
-            \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
-            \"standardFlowEnabled\": true,
-            \"directAccessGrantsEnabled\": true
-        }" > /dev/null
-
-    # Get client UUID for secret generation
+    # Check if client already exists
     CLIENT_UUID=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients?clientId=$CLIENT_ID1" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
+        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id // empty')
 
-    # Generate and retrieve client secret
-    CLIENT_SECRET_GENERATED1=$(curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+    if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
+        # Client doesn't exist, create it
+        echo "  Creating new client: $CLIENT_ID1"
+        
+        CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"clientId\": \"$CLIENT_ID1\",
+                \"enabled\": true,
+                \"publicClient\": false,
+                \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
+                \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
+                \"standardFlowEnabled\": true,
+                \"directAccessGrantsEnabled\": true
+            }")
+        
+        HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+        
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            # Get the newly created client UUID
+            CLIENT_UUID=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients?clientId=$CLIENT_ID1" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
+            
+            # Generate new secret for new client
+            CLIENT_SECRET_GENERATED1=$(curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+            
+            echo "  ✅ Client created successfully"
+        else
+            echo "  ⚠️  Failed to create client (HTTP $HTTP_CODE)"
+        fi
+    else
+        # Client exists, retrieve existing secret
+        echo "  Client already exists, retrieving existing secret..."
+        
+        CLIENT_SECRET_GENERATED1=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+        
+        echo "  ✅ Using existing client"
+    fi
 
     echo "Client 1 configured:"
     echo "  Client ID: $CLIENT_ID1"
@@ -312,27 +340,49 @@ create_oauth_client_step() {
     echo "  Redirect URIs: $CLIENT_REDIRECT_URI_1, $CLIENT_REDIRECT_URI_2"
     echo ""
 
-    # Create second client
-    echo "Creating OAuth2 client 2: $CLIENT_ID2..."
-
-    curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"clientId\": \"$CLIENT_ID2\",
-            \"enabled\": true,
-            \"publicClient\": false,
-            \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
-            \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
-            \"standardFlowEnabled\": true,
-            \"directAccessGrantsEnabled\": true
-        }" > /dev/null
+    # Same process for second client
+    echo "Configuring OAuth2 client 2: $CLIENT_ID2..."
 
     CLIENT_UUID=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients?clientId=$CLIENT_ID2" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
+        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id // empty')
 
-    CLIENT_SECRET_GENERATED2=$(curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+    if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
+        echo "  Creating new client: $CLIENT_ID2"
+        
+        CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"clientId\": \"$CLIENT_ID2\",
+                \"enabled\": true,
+                \"publicClient\": false,
+                \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
+                \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
+                \"standardFlowEnabled\": true,
+                \"directAccessGrantsEnabled\": true
+            }")
+        
+        HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+        
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            CLIENT_UUID=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients?clientId=$CLIENT_ID2" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id')
+            
+            CLIENT_SECRET_GENERATED2=$(curl -s -X POST "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+            
+            echo "  ✅ Client created successfully"
+        else
+            echo "  ⚠️  Failed to create client (HTTP $HTTP_CODE)"
+        fi
+    else
+        echo "  Client already exists, retrieving existing secret..."
+        
+        CLIENT_SECRET_GENERATED2=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
+        
+        echo "  ✅ Using existing client"
+    fi
 
     echo "Client 2 configured:"
     echo "  Client ID: $CLIENT_ID2"

@@ -262,12 +262,22 @@ make db-show-users
 ```
 
 **OAuth error "Invalid client credentials":**
+
+This error typically occurs when OAuth client secrets are not synchronized between Keycloak and the Apache containers.
+
+**Important**: Starting from the latest version, `make setup-spi` intelligently handles OAuth clients:
+- ✅ If clients exist: retrieves and uses existing secrets (persistence preserved)
+- ✅ If clients don't exist: creates new ones with new secrets
+- ✅ Automatically synchronizes secrets to `.env` and Apache containers
+
+If you still encounter this error:
 ```bash
-# Resynchronize client secrets (normally done automatically by setup-spi)
+# Manually resynchronize client secrets
 make update-client-secrets
 
-# Or run the complete setup again
-make setup-spi
+# Or verify client configuration in Keycloak Admin Console
+# Navigate to: http://localhost:8080/admin
+# Go to: test_env realm > Clients > [your_client]
 ```
 
 **Port already in use:**
@@ -420,6 +430,35 @@ This command orchestrates:
 3. SPI compilation and deployment
 4. Keycloak configuration
 5. OAuth client secret synchronization
+
+## Data Persistence
+
+The system uses Docker volumes to persist data across container restarts:
+
+### Persistent Data (Survives Restarts)
+- ✅ **Keycloak Database** (`postgres_data` volume): Realms, clients, OAuth secrets, user federation configuration
+- ✅ **User Database** (`postgres_user_data` volume): Custom user data and credentials
+- ✅ **Keycloak Data** (`keycloak_data` volume): Keycloak runtime data
+
+### Smart OAuth Client Management
+`make setup-spi` intelligently handles OAuth clients:
+- **First run**: Creates new clients with new secrets
+- **Subsequent runs**: Detects existing clients and reuses their secrets
+- **Result**: OAuth authentication works immediately without manual secret synchronization
+
+### Volume Management
+```bash
+# View volumes
+docker volume ls
+
+# Remove all data (WARNING: destructive!)
+make down-clean  # Stops services and removes volumes
+
+# Normal restart (keeps all data)
+make restart
+```
+
+**Note**: After `make down-clean`, you'll need to run `make setup-from-scratch` to reinitialize everything.
 
 ## Configuration Management
 
