@@ -35,7 +35,7 @@ RED=\033[0;31m
 BLUE=\033[0;34m
 NC=\033[0m # No Color
 
-.PHONY: help config check-config build up down logs clean setup-spi remove-spi test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 logs-adminer update-client-secrets
+.PHONY: help config check-config build up down logs clean setup-spi remove-spi test test-spi restart status build-spi logs-keycloak logs-user-db logs-apache1 logs-apache2 logs-adminer update-client-secrets
 
 help: ## Show this help message
 	@echo "$(BLUE)=====================================================$(NC)"
@@ -109,7 +109,11 @@ remove-spi: check-config ## Remove User Federation component from Keycloak
 	@./scripts/remove_component.sh
 	@echo "$(GREEN)✅ User Federation component removed!$(NC)"
 
-test-spi: check-config ## Test SPI integration
+test: check-config ## Run complete integration test suite
+	@echo "$(YELLOW)🧪 Running integration test suite...$(NC)"
+	@./scripts/test-integration.sh
+
+test-spi: check-config ## Quick SPI integration test
 	@echo "$(YELLOW)🧪 Testing SPI integration...$(NC)"
 	@echo "$(BLUE)1. Checking if Keycloak is running:$(NC)"
 	@curl -s http://$(KEYCLOAK_HOST):$(KEYCLOAK_PORT)/health > /dev/null && \

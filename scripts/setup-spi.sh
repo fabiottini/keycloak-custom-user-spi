@@ -325,13 +325,28 @@ create_oauth_client_step() {
             echo "  ⚠️  Failed to create client (HTTP $HTTP_CODE)"
         fi
     else
-        # Client exists, retrieve existing secret
-        echo "  Client already exists, retrieving existing secret..."
+        # Client exists, update settings and retrieve existing secret
+        echo "  Client already exists, updating settings..."
+        
+        # Update client settings to ensure correct configuration
+        curl -s -X PUT "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$CLIENT_UUID\",
+                \"clientId\": \"$CLIENT_ID1\",
+                \"enabled\": true,
+                \"publicClient\": false,
+                \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
+                \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
+                \"standardFlowEnabled\": true,
+                \"directAccessGrantsEnabled\": true
+            }" > /dev/null
         
         CLIENT_SECRET_GENERATED1=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
             -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
         
-        echo "  ✅ Using existing client"
+        echo "  ✅ Client updated with correct settings"
     fi
 
     echo "Client 1 configured:"
@@ -376,12 +391,27 @@ create_oauth_client_step() {
             echo "  ⚠️  Failed to create client (HTTP $HTTP_CODE)"
         fi
     else
-        echo "  Client already exists, retrieving existing secret..."
+        echo "  Client already exists, updating settings..."
+        
+        # Update client settings to ensure correct configuration
+        curl -s -X PUT "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$CLIENT_UUID\",
+                \"clientId\": \"$CLIENT_ID2\",
+                \"enabled\": true,
+                \"publicClient\": false,
+                \"redirectUris\": [\"$CLIENT_REDIRECT_URI_1\", \"$CLIENT_REDIRECT_URI_2\"],
+                \"webOrigins\": [\"$CLIENT_WEB_ORIGINS_1\", \"$CLIENT_WEB_ORIGINS_2\"],
+                \"standardFlowEnabled\": true,
+                \"directAccessGrantsEnabled\": true
+            }" > /dev/null
         
         CLIENT_SECRET_GENERATED2=$(curl -s -X GET "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/admin/realms/$REALM_NAME/clients/$CLIENT_UUID/client-secret" \
             -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.value')
         
-        echo "  ✅ Using existing client"
+        echo "  ✅ Client updated with correct settings"
     fi
 
     echo "Client 2 configured:"
@@ -493,6 +523,20 @@ restart_keycloak_step() {
     echo "Performing final Keycloak restart..."
     docker-compose restart "$KEYCLOAK_CONTAINER_NAME"
     echo "Keycloak restarted"
+    
+    # Wait for Keycloak to be ready after restart
+    echo "Waiting for Keycloak to be ready..."
+    local attempt=0
+    until curl -s "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/health" > /dev/null 2>&1 || \
+          curl -s "http://$KEYCLOAK_HOST:$KEYCLOAK_PORT/realms/master" > /dev/null 2>&1; do
+        echo "  Attempt $((++attempt))/$MAX_WAIT_ATTEMPTS - Keycloak not ready yet..."
+        if [ $attempt -ge "$MAX_WAIT_ATTEMPTS" ]; then
+            echo "⚠️  Timeout waiting for Keycloak restart"
+            return 1
+        fi
+        sleep "$WAIT_INTERVAL"
+    done
+    echo "✅ Keycloak is ready"
 }
 
 # -----------------------------------------------------
